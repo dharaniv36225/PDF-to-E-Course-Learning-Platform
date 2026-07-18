@@ -1,0 +1,38 @@
+# Render Blueprint — deploys the FastAPI backend + managed Postgres.
+# The Next.js frontend is deployed separately on Vercel (see docs/DEPLOYMENT.md).
+services:
+  - type: web
+    name: ecourse-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ecourse-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: BACKEND_CORS_ORIGINS
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+databases:
+  - name: ecourse-db
+    plan: starter
+    databaseName: ecourse
+    postgresMajorVersion: "16"
