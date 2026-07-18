@@ -64,7 +64,7 @@ def submit_quiz(
     db: Session = Depends(get_db),
 ) -> QuizAttemptResult:
     service = QuizService(db)
-    result = service.grade(quiz_id, current_user.id, [a.model_dump() for a in payload.answers])
+    result = service.grade(quiz_id, current_user.id, [a.model_dump(mode="json") for a in payload.answers])
     attempt = result["attempt"]
     return QuizAttemptResult(
         id=attempt.id,

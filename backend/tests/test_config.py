@@ -2,7 +2,9 @@
 import os
 from unittest import mock
 
-from app.core.config import Settings
+import pytest
+
+from app.core.config import INSECURE_SECRET_KEY, Settings
 
 
 def test_database_url_normalizes_legacy_scheme() -> None:
@@ -34,3 +36,18 @@ def test_cors_origins_from_env_comma_separated() -> None:
 def test_cors_origins_from_env_json_array() -> None:
     with mock.patch.dict(os.environ, {"BACKEND_CORS_ORIGINS": '["http://a.com"]'}):
         assert Settings().BACKEND_CORS_ORIGINS == ["http://a.com"]
+
+
+def test_production_rejects_default_secret_key() -> None:
+    with pytest.raises(ValueError, match="SECRET_KEY"):
+        Settings(ENVIRONMENT="production", SECRET_KEY=INSECURE_SECRET_KEY)
+
+
+def test_production_accepts_custom_secret_key() -> None:
+    settings = Settings(ENVIRONMENT="production", SECRET_KEY="a-strong-unique-secret")
+    assert settings.is_production is True
+
+
+def test_development_allows_default_secret_key() -> None:
+    settings = Settings(ENVIRONMENT="development", SECRET_KEY=INSECURE_SECRET_KEY)
+    assert settings.SECRET_KEY == INSECURE_SECRET_KEY

@@ -11,6 +11,7 @@ from app.repositories.course import CourseRepository
 from app.repositories.progress import ProgressRepository
 from app.repositories.quiz import QuizAttemptRepository, QuizRepository
 from app.repositories.upload import UploadRepository
+from app.schemas.course import CourseRead, CourseWithProgress
 from app.services.course_service import CourseService
 
 
@@ -39,12 +40,12 @@ class DashboardService:
             course = item["course"]
             stats = item["stats"]
             recent_courses.append(
-                {
-                    "course": course,
-                    "completion_percent": stats["completion_percent"],
-                    "total_lessons": stats["total_lessons"],
-                    "completed_lessons": stats["completed_lessons"],
-                }
+                CourseWithProgress(
+                    **CourseRead.model_validate(course).model_dump(),
+                    completion_percent=stats["completion_percent"],
+                    total_lessons=stats["total_lessons"],
+                    completed_lessons=stats["completed_lessons"],
+                )
             )
 
         quiz_scores = []

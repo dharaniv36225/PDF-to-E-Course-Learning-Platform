@@ -5,8 +5,10 @@ import json
 from functools import lru_cache
 from typing import Annotated
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+INSECURE_SECRET_KEY = "change-me-in-production"
 
 
 class Settings(BaseSettings):
@@ -30,7 +32,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # --- Security / JWT ---
-    SECRET_KEY: str = "change-me-in-production"
+    SECRET_KEY: str = INSECURE_SECRET_KEY
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30
@@ -104,6 +106,16 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT.lower() in {"production", "prod"}
+
+    @model_validator(mode="after")
+    def enforce_secure_secret_in_production(self) -> Settings:
+        """Refuse to start in production with the publicly-known default secret."""
+        if self.is_production and self.SECRET_KEY == INSECURE_SECRET_KEY:
+            raise ValueError(
+                "SECRET_KEY must be set to a strong, unique value in production "
+                "(the default 'change-me-in-production' is insecure)."
+            )
+        return self
 
 
 @lru_cache
