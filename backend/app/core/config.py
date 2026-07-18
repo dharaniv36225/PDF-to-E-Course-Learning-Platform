@@ -1,10 +1,12 @@
 """Application configuration loaded from environment variables."""
 from __future__ import annotations
 
+import json
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -37,7 +39,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/ecourse"
 
     # --- CORS ---
-    BACKEND_CORS_ORIGINS: list[str] = Field(
+    # ``NoDecode`` disables pydantic-settings' default JSON decoding so the
+    # validator below can also accept a plain comma-separated string from env.
+    BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
     )
 
@@ -75,8 +79,11 @@ class Settings(BaseSettings):
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, value: object) -> object:
-        if isinstance(value, str) and not value.startswith("["):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped.startswith("["):
+                return json.loads(stripped)
+            return [origin.strip() for origin in stripped.split(",") if origin.strip()]
         return value
 
     @field_validator("DATABASE_URL", mode="before")

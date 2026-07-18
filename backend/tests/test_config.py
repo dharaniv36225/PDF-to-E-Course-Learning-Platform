@@ -1,4 +1,7 @@
 """Tests for settings normalization."""
+import os
+from unittest import mock
+
 from app.core.config import Settings
 
 
@@ -20,3 +23,14 @@ def test_database_url_keeps_explicit_driver() -> None:
 def test_cors_origins_accepts_comma_separated_string() -> None:
     settings = Settings(BACKEND_CORS_ORIGINS="http://a.com, http://b.com")
     assert settings.BACKEND_CORS_ORIGINS == ["http://a.com", "http://b.com"]
+
+
+def test_cors_origins_from_env_comma_separated() -> None:
+    """Env vars are the real-world path (docker-compose/Render) and must not crash."""
+    with mock.patch.dict(os.environ, {"BACKEND_CORS_ORIGINS": "http://a.com,http://b.com"}):
+        assert Settings().BACKEND_CORS_ORIGINS == ["http://a.com", "http://b.com"]
+
+
+def test_cors_origins_from_env_json_array() -> None:
+    with mock.patch.dict(os.environ, {"BACKEND_CORS_ORIGINS": '["http://a.com"]'}):
+        assert Settings().BACKEND_CORS_ORIGINS == ["http://a.com"]
