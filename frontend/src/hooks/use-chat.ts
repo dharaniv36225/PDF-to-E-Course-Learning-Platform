@@ -1,18 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { API_URL, api, tokenStore } from "@/lib/api";
+import { API_URL, getData, tokenStore } from "@/lib/api";
 import type { ChatSession, Source } from "@/types";
 
 export function useChatSessions(courseId: string) {
   return useQuery({
     queryKey: ["chat-sessions", courseId],
-    queryFn: async () => {
-      const { data } = await api.get<ChatSession[]>("/chat/sessions", {
-        params: { course_id: courseId },
-      });
-      return data;
-    },
+    queryFn: () =>
+      getData<ChatSession[]>("/chat/sessions", { params: { course_id: courseId } }),
     enabled: Boolean(courseId),
   });
 }
@@ -20,10 +16,7 @@ export function useChatSessions(courseId: string) {
 export function useChatSession(sessionId: string | null) {
   return useQuery({
     queryKey: ["chat-session", sessionId],
-    queryFn: async () => {
-      const { data } = await api.get<ChatSession>(`/chat/sessions/${sessionId}`);
-      return data;
-    },
+    queryFn: () => getData<ChatSession>(`/chat/sessions/${sessionId}`),
     enabled: Boolean(sessionId),
   });
 }

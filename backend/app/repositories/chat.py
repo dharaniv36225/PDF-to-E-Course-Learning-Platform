@@ -4,7 +4,6 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.chat import ChatMessage, ChatSession
@@ -16,23 +15,20 @@ class ChatSessionRepository(BaseRepository[ChatSession]):
         super().__init__(ChatSession, db)
 
     def list_for_user(self, user_id: uuid.UUID, *, course_id: uuid.UUID | None = None) -> Sequence[ChatSession]:
-        stmt = select(ChatSession).where(ChatSession.user_id == user_id)
+        criteria = [ChatSession.user_id == user_id]
         if course_id is not None:
-            stmt = stmt.where(ChatSession.course_id == course_id)
-        stmt = stmt.order_by(ChatSession.created_at.desc())
-        return self.db.execute(stmt).scalars().all()
+            criteria.append(ChatSession.course_id == course_id)
+        return self.find_all(*criteria, order_by=ChatSession.created_at.desc())
 
     def get_for_user(self, session_id: uuid.UUID, user_id: uuid.UUID) -> ChatSession | None:
-        stmt = select(ChatSession).where(ChatSession.id == session_id, ChatSession.user_id == user_id)
-        return self.db.execute(stmt).scalar_one_or_none()
+        return self.find_one(ChatSession.id == session_id, ChatSession.user_id == user_id)
 
     def get_detail(self, session_id: uuid.UUID, user_id: uuid.UUID) -> ChatSession | None:
-        stmt = (
-            select(ChatSession)
-            .where(ChatSession.id == session_id, ChatSession.user_id == user_id)
-            .options(selectinload(ChatSession.messages))
+        return self.find_one(
+            ChatSession.id == session_id,
+            ChatSession.user_id == user_id,
+            options=[selectinload(ChatSession.messages)],
         )
-        return self.db.execute(stmt).scalar_one_or_none()
 
 
 class ChatMessageRepository(BaseRepository[ChatMessage]):
@@ -40,9 +36,4 @@ class ChatMessageRepository(BaseRepository[ChatMessage]):
         super().__init__(ChatMessage, db)
 
     def list_for_session(self, session_id: uuid.UUID) -> Sequence[ChatMessage]:
-        stmt = (
-            select(ChatMessage)
-            .where(ChatMessage.session_id == session_id)
-            .order_by(ChatMessage.created_at)
-        )
-        return self.db.execute(stmt).scalars().all()
+        return self.find_all(ChatMessage.session_id == session_id, order_by=ChatMessage.created_at)

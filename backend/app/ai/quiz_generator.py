@@ -6,7 +6,6 @@ from typing import Any
 from app.ai.llm import get_llm
 from app.ai.prompts import QUIZ_SYSTEM_PROMPT, QUIZ_TEMPLATE
 from app.core.logging import get_logger
-from app.utils.json_parsing import extract_json
 
 logger = get_logger(__name__)
 
@@ -29,15 +28,7 @@ async def generate_quiz(
         num_questions=num_questions,
         question_types=", ".join(types),
     )
-    llm = get_llm()
-    raw = await llm.complete(
-        [
-            {"role": "system", "content": QUIZ_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-        response_json=True,
-    )
-    data = extract_json(raw)
+    data = await get_llm().complete_json(QUIZ_SYSTEM_PROMPT, prompt)
     return _normalize_quiz(data, types)
 
 

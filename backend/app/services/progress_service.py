@@ -2,14 +2,31 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import NotFoundError
+from app.core.errors import get_or_404
 from app.models.progress import LessonProgress
 from app.repositories.course import CourseRepository, LessonRepository
 from app.repositories.progress import ProgressRepository
+
+
+def summarize_lesson_progress(
+    total_lessons: int, progress_rows: Iterable[LessonProgress]
+) -> dict:
+    """Aggregate completion and time-spent metrics for a set of lesson-progress rows."""
+    rows = list(progress_rows)
+    completed = sum(1 for r in rows if r.completed)
+    time_spent = sum(r.time_spent_seconds for r in rows)
+    percent = round((completed / total_lessons) * 100, 2) if total_lessons else 0.0
+    return {
+        "total_lessons": total_lessons,
+        "completed_lessons": completed,
+        "completion_percent": percent,
+        "total_time_spent_seconds": time_spent,
+    }
 
 
 class ProgressService:
@@ -29,10 +46,8 @@ class ProgressService:
         time_spent_seconds: int | None = None,
         last_position: int | None = None,
     ) -> LessonProgress:
-        if not self.courses.get_for_user(course_id, user_id):
-            raise NotFoundError("Course not found")
-        if not self.lessons.get_in_course(lesson_id, course_id):
-            raise NotFoundError("Lesson not found")
+        get_or_404(self.courses.get_for_user(course_id, user_id), "Course not found")
+        get_or_404(self.lessons.get_in_course(lesson_id, course_id), "Lesson not found")
 
         record = self.progress.get_for_lesson(user_id, lesson_id)
         if record is None:
@@ -50,18 +65,10 @@ class ProgressService:
         return record
 
     def get_course_summary(self, user_id: uuid.UUID, course_id: uuid.UUID) -> dict:
-        if not self.courses.get_for_user(course_id, user_id):
-            raise NotFoundError("Course not found")
+        get_or_404(self.courses.get_for_user(course_id, user_id), "Course not found")
         lessons = self.lessons.list_for_course(course_id)
-        total = len(lessons)
         rows = self.progress.list_for_course(user_id, course_id)
-        completed = sum(1 for r in rows if r.completed)
-        time_spent = sum(r.time_spent_seconds for r in rows)
-        percent = round((completed / total) * 100, 2) if total else 0.0
         return {
             "course_id": course_id,
-            "total_lessons": total,
-            "completed_lessons": completed,
-            "completion_percent": percent,
-            "total_time_spent_seconds": time_spent,
+            **summarize_lesson_progress(len(lessons), rows),
         }

@@ -3,14 +3,28 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, getApiErrorMessage, tokenStore } from "@/lib/api";
+import { getApiErrorMessage, getData, postData, tokenStore } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/auth-store";
 import type { AuthTokens, User } from "@/types";
 
-async function fetchMe(): Promise<User> {
-  const { data } = await api.get<User>("/auth/me");
-  return data;
+const fetchMe = () => getData<User>("/auth/me");
+
+/** Shared mutation for the login/register flows: persist tokens, refetch user, redirect. */
+function useAuthTokenMutation<TPayload>(path: string) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: TPayload) => postData<AuthTokens>(path, payload),
+    onSuccess: async (tokens) => {
+      tokenStore.set(tokens.access_token, tokens.refresh_token);
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      router.push("/dashboard");
+    },
+    onError: (error) => {
+      throw new Error(getApiErrorMessage(error));
+    },
+  });
 }
 
 export function useCurrentUser() {
@@ -35,41 +49,13 @@ export function useCurrentUser() {
 }
 
 export function useLogin() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: { email: string; password: string }) => {
-      const { data } = await api.post<AuthTokens>("/auth/login", payload);
-      return data;
-    },
-    onSuccess: async (tokens) => {
-      tokenStore.set(tokens.access_token, tokens.refresh_token);
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
-      router.push("/dashboard");
-    },
-    onError: (error) => {
-      throw new Error(getApiErrorMessage(error));
-    },
-  });
+  return useAuthTokenMutation<{ email: string; password: string }>("/auth/login");
 }
 
 export function useRegister() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: { email: string; password: string; full_name?: string }) => {
-      const { data } = await api.post<AuthTokens>("/auth/register", payload);
-      return data;
-    },
-    onSuccess: async (tokens) => {
-      tokenStore.set(tokens.access_token, tokens.refresh_token);
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
-      router.push("/dashboard");
-    },
-    onError: (error) => {
-      throw new Error(getApiErrorMessage(error));
-    },
-  });
+  return useAuthTokenMutation<{ email: string; password: string; full_name?: string }>(
+    "/auth/register"
+  );
 }
 
 export function useLogout() {
@@ -99,6 +85,6 @@ export function useGoogleLogin() {
 
 /** Exchange a Supabase session token for backend JWTs (used in OAuth callback). */
 export async function exchangeSupabaseToken(accessToken: string): Promise<void> {
-  const { data } = await api.post<AuthTokens>("/auth/supabase", { access_token: accessToken });
-  tokenStore.set(data.access_token, data.refresh_token);
+  const tokens = await postData<AuthTokens>("/auth/supabase", { access_token: accessToken });
+  tokenStore.set(tokens.access_token, tokens.refresh_token);
 }

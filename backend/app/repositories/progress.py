@@ -17,10 +17,9 @@ class ProgressRepository(BaseRepository[LessonProgress]):
         super().__init__(LessonProgress, db)
 
     def get_for_lesson(self, user_id: uuid.UUID, lesson_id: uuid.UUID) -> LessonProgress | None:
-        stmt = select(LessonProgress).where(
+        return self.find_one(
             LessonProgress.user_id == user_id, LessonProgress.lesson_id == lesson_id
         )
-        return self.db.execute(stmt).scalar_one_or_none()
 
     def list_for_course(self, user_id: uuid.UUID, course_id: uuid.UUID) -> Sequence[LessonProgress]:
         stmt = (
@@ -32,5 +31,4 @@ class ProgressRepository(BaseRepository[LessonProgress]):
         return self.db.execute(stmt).scalars().all()
 
     def list_for_user(self, user_id: uuid.UUID) -> Sequence[LessonProgress]:
-        stmt = select(LessonProgress).where(LessonProgress.user_id == user_id)
-        return self.db.execute(stmt).scalars().all()
+        return self.find_all(LessonProgress.user_id == user_id)

@@ -1,7 +1,6 @@
 """User repository."""
 from __future__ import annotations
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.user import User
@@ -13,9 +12,7 @@ class UserRepository(BaseRepository[User]):
         super().__init__(User, db)
 
     def get_by_email(self, email: str) -> User | None:
-        stmt = select(User).where(User.email == email.lower())
-        return self.db.execute(stmt).scalar_one_or_none()
+        return self.find_one(User.email == email.lower())
 
     def get_by_supabase_id(self, supabase_user_id: str) -> User | None:
-        stmt = select(User).where(User.supabase_user_id == supabase_user_id)
-        return self.db.execute(stmt).scalar_one_or_none()
+        return self.find_one(User.supabase_user_id == supabase_user_id)

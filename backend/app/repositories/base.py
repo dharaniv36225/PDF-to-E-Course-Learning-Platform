@@ -7,6 +7,8 @@ from typing import Generic, TypeVar
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.base import ExecutableOption
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.db.base import Base
 
@@ -23,12 +25,45 @@ class BaseRepository(Generic[ModelType]):
     def get(self, obj_id: uuid.UUID) -> ModelType | None:
         return self.db.get(self.model, obj_id)
 
-    def list(self, *, limit: int = 100, offset: int = 0) -> Sequence[ModelType]:
-        stmt = select(self.model).limit(limit).offset(offset)
+    def find_one(
+        self,
+        *criteria: ColumnElement[bool],
+        options: Sequence[ExecutableOption] | None = None,
+    ) -> ModelType | None:
+        """Return a single row matching ``criteria`` (or ``None``)."""
+        stmt = select(self.model).where(*criteria)
+        if options:
+            stmt = stmt.options(*options)
+        return self.db.execute(stmt).scalar_one_or_none()
+
+    def find_all(
+        self,
+        *criteria: ColumnElement[bool],
+        order_by: Sequence[ColumnElement] | ColumnElement | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Sequence[ModelType]:
+        """Return all rows matching ``criteria`` with optional ordering/paging."""
+        stmt = select(self.model).where(*criteria)
+        if order_by is not None:
+            order = order_by if isinstance(order_by, list | tuple) else (order_by,)
+            stmt = stmt.order_by(*order)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        if offset:
+            stmt = stmt.offset(offset)
         return self.db.execute(stmt).scalars().all()
 
+    def count_where(self, *criteria: ColumnElement[bool]) -> int:
+        """Count rows matching ``criteria`` (all rows when none given)."""
+        stmt = select(func.count()).select_from(self.model).where(*criteria)
+        return self.db.execute(stmt).scalar_one()
+
+    def list(self, *, limit: int = 100, offset: int = 0) -> Sequence[ModelType]:
+        return self.find_all(limit=limit, offset=offset)
+
     def count(self) -> int:
-        return self.db.execute(select(func.count()).select_from(self.model)).scalar_one()
+        return self.count_where()
 
     def add(self, obj: ModelType) -> ModelType:
         self.db.add(obj)

@@ -7,7 +7,6 @@ from app.ai.llm import get_llm
 from app.ai.prompts import COURSE_STRUCTURE_TEMPLATE, COURSE_SYSTEM_PROMPT
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.utils.json_parsing import extract_json
 
 logger = get_logger(__name__)
 
@@ -28,16 +27,9 @@ async def generate_course_structure(
         difficulty=difficulty,
         max_chapters=max_chapters,
     )
-    llm = get_llm()
-    raw = await llm.complete(
-        [
-            {"role": "system", "content": COURSE_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=settings.LLM_TEMPERATURE,
-        response_json=True,
+    data = await get_llm().complete_json(
+        COURSE_SYSTEM_PROMPT, prompt, temperature=settings.LLM_TEMPERATURE
     )
-    data = extract_json(raw)
     return _normalize_course(data, difficulty)
 
 

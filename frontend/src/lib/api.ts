@@ -1,4 +1,4 @@
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
@@ -71,6 +71,34 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/** Thin helpers returning the response body directly, for use in query/mutation fns. */
+export async function getData<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  const { data } = await api.get<T>(url, config);
+  return data;
+}
+
+export async function postData<T>(
+  url: string,
+  body?: unknown,
+  config?: AxiosRequestConfig
+): Promise<T> {
+  const { data } = await api.post<T>(url, body, config);
+  return data;
+}
+
+export async function putData<T>(
+  url: string,
+  body?: unknown,
+  config?: AxiosRequestConfig
+): Promise<T> {
+  const { data } = await api.put<T>(url, body, config);
+  return data;
+}
+
+export async function deleteData(url: string, config?: AxiosRequestConfig): Promise<void> {
+  await api.delete(url, config);
+}
 
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {

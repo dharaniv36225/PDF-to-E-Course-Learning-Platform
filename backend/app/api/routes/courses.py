@@ -12,7 +12,6 @@ from app.models.user import User
 from app.schemas.common import Message
 from app.schemas.course import (
     CourseDetail,
-    CourseRead,
     CourseWithProgress,
     GenerateCourseRequest,
     LessonRead,
@@ -44,19 +43,10 @@ def list_courses(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> list[CourseWithProgress]:
     service = CourseService(db)
-    results = []
-    for item in service.list_courses_with_progress(current_user.id):
-        course = item["course"]
-        stats = item["stats"]
-        results.append(
-            CourseWithProgress(
-                **CourseRead.model_validate(course).model_dump(),
-                completion_percent=stats["completion_percent"],
-                total_lessons=stats["total_lessons"],
-                completed_lessons=stats["completed_lessons"],
-            )
-        )
-    return results
+    return [
+        CourseWithProgress.from_course(item["course"], item["stats"])
+        for item in service.list_courses_with_progress(current_user.id)
+    ]
 
 
 @router.get("/{course_id}", response_model=CourseDetail)
