@@ -17,3 +17,11 @@ def test_extract_embedded_object():
 
 def test_extract_array():
     assert extract_json("[1, 2, 3]") == [1, 2, 3]
+
+
+def test_extract_invalid_raises_with_cause():
+    import pytest
+
+    with pytest.raises(ValueError) as exc_info:
+        extract_json("not json at all")
+    assert exc_info.value.__cause__ is not None
