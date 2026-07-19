@@ -61,8 +61,9 @@ export async function streamChat(
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let settled = false;
 
-    while (true) {
+    while (!settled) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -78,14 +79,24 @@ export async function streamChat(
           session_id?: string;
           sources?: Source[];
           content?: string;
+          message?: string;
         };
         if (event.type === "session" && event.session_id) callbacks.onSession?.(event.session_id);
         else if (event.type === "sources") callbacks.onSources?.(event.sources ?? []);
         else if (event.type === "token") callbacks.onToken?.(event.content ?? "");
-        else if (event.type === "done") callbacks.onDone?.();
+        else if (event.type === "error") {
+          settled = true;
+          callbacks.onError?.(new Error(event.message || "The server failed to generate a response"));
+          break;
+        } else if (event.type === "done") {
+          settled = true;
+          callbacks.onDone?.();
+          break;
+        }
       }
     }
-    callbacks.onDone?.();
+    // If the stream closed without an explicit terminal event, treat it as done.
+    if (!settled) callbacks.onDone?.();
   } catch (error) {
     callbacks.onError?.(error instanceof Error ? error : new Error("Stream failed"));
   }

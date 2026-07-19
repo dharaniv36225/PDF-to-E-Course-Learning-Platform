@@ -16,10 +16,11 @@ def extract_json(text: str) -> Any:
     if fence:
         cleaned = fence.group(1).strip()
 
+    last_error: json.JSONDecodeError
     try:
         return json.loads(cleaned)
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as exc:
+        last_error = exc
 
     # Fall back to the first balanced { ... } or [ ... ] block.
     for open_ch, close_ch in (("{", "}"), ("[", "]")):
@@ -29,6 +30,7 @@ def extract_json(text: str) -> Any:
             candidate = cleaned[start : end + 1]
             try:
                 return json.loads(candidate)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as exc:
+                last_error = exc
                 continue
-    raise ValueError("Could not parse JSON from LLM response")
+    raise ValueError(f"Could not parse JSON from LLM response: {last_error}") from last_error

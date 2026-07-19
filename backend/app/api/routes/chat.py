@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.logging import get_logger
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.chat import (
@@ -21,6 +22,8 @@ from app.schemas.chat import (
 )
 from app.schemas.common import Message
 from app.services.chat_service import ChatService
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -59,11 +62,19 @@ async def chat_stream(
         yield _sse({"type": "session", "session_id": str(session.id)})
         yield _sse({"type": "sources", "sources": sources})
         collected: list[str] = []
-        async for token in iterator:
-            collected.append(token)
-            yield _sse({"type": "token", "content": token})
-        full_text = "".join(collected)
-        message = finalize(full_text)
+        try:
+            async for token in iterator:
+                collected.append(token)
+                yield _sse({"type": "token", "content": token})
+            message = finalize("".join(collected))
+        except Exception as exc:  # noqa: BLE001
+            # Exceptions raised inside a streaming response can no longer be
+            # turned into an HTTP error (the 200 response has already begun),
+            # so surface the failure to the client as an explicit SSE event
+            # instead of letting the connection close silently.
+            logger.exception("Chat stream failed for session %s: %s", session.id, exc)
+            yield _sse({"type": "error", "message": "Failed to generate a response."})
+            return
         yield _sse({"type": "done", "message_id": str(message.id)})
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
