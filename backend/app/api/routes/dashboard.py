@@ -20,7 +20,7 @@ router = APIRouter(tags=["dashboard"])
 def get_dashboard(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> DashboardStats:
-    return DashboardService(db).get_stats(current_user.id)
+    return DashboardStats.model_validate(DashboardService(db).get_stats(current_user.id))
 
 
 @router.get("/search", response_model=SearchResponse, tags=["search"])
@@ -30,4 +30,4 @@ def search(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SearchResponse:
-    return SearchService(db).search(current_user.id, q, course_id)
+    return SearchResponse.model_validate(SearchService(db).search(current_user.id, q, course_id))

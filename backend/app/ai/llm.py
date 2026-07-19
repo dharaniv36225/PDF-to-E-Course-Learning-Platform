@@ -2,10 +2,14 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 from app.core.config import settings
 from app.core.errors import ServiceUnavailableError
 from app.core.logging import get_logger
+
+if TYPE_CHECKING:
+    from openai import AsyncOpenAI
 
 logger = get_logger(__name__)
 
@@ -21,8 +25,8 @@ class LLMProvider:
     """
 
     def __init__(self) -> None:
-        self._groq = None
-        self._openrouter = None
+        self._groq: AsyncOpenAI | None = None
+        self._openrouter: AsyncOpenAI | None = None
         self._init_clients()
 
     def _init_clients(self) -> None:

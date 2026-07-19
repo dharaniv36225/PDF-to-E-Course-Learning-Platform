@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 
 from sqlalchemy.orm import Session
 
@@ -76,7 +76,7 @@ class ChatService:
 
     async def stream(
         self, user_id: uuid.UUID, course_id: uuid.UUID, session: ChatSession, question: str
-    ) -> tuple[AsyncIterator[str], list[dict], callable]:
+    ) -> tuple[AsyncIterator[str], list[dict], Callable[[str], ChatMessage]]:
         """Return (token_iterator, sources, finalize).
 
         ``finalize(full_text)`` persists the completed assistant message.

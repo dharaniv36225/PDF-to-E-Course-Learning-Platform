@@ -79,7 +79,10 @@ def list_sessions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[ChatSessionRead]:
-    return list(ChatService(db).list_sessions(current_user.id, course_id))
+    return [
+        ChatSessionRead.model_validate(session)
+        for session in ChatService(db).list_sessions(current_user.id, course_id)
+    ]
 
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionDetail)
@@ -88,7 +91,9 @@ def get_session(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ChatSessionDetail:
-    return ChatService(db).get_session_detail(session_id, current_user.id)
+    return ChatSessionDetail.model_validate(
+        ChatService(db).get_session_detail(session_id, current_user.id)
+    )
 
 
 @router.delete("/sessions/{session_id}", response_model=Message)

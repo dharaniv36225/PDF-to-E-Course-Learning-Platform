@@ -30,13 +30,15 @@ def update_lesson_progress(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> LessonProgressRead:
-    return ProgressService(db).update_lesson_progress(
-        current_user.id,
-        course_id,
-        lesson_id,
-        completed=payload.completed,
-        time_spent_seconds=payload.time_spent_seconds,
-        last_position=payload.last_position,
+    return LessonProgressRead.model_validate(
+        ProgressService(db).update_lesson_progress(
+            current_user.id,
+            course_id,
+            lesson_id,
+            completed=payload.completed,
+            time_spent_seconds=payload.time_spent_seconds,
+            last_position=payload.last_position,
+        )
     )
 
 
@@ -46,4 +48,6 @@ def course_progress(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CourseProgressSummary:
-    return ProgressService(db).get_course_summary(current_user.id, course_id)
+    return CourseProgressSummary.model_validate(
+        ProgressService(db).get_course_summary(current_user.id, course_id)
+    )

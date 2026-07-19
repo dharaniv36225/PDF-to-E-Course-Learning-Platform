@@ -1,6 +1,7 @@
 """Generic repository implementing common CRUD operations."""
 from __future__ import annotations
 
+import builtins
 import uuid
 from collections.abc import Sequence
 from typing import Generic, TypeVar
@@ -35,7 +36,7 @@ class BaseRepository(Generic[ModelType]):
         self.db.flush()
         return obj
 
-    def add_all(self, objs: list[ModelType]) -> list[ModelType]:
+    def add_all(self, objs: builtins.list[ModelType]) -> builtins.list[ModelType]:
         self.db.add_all(objs)
         self.db.flush()
         return objs

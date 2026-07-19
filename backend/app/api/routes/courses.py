@@ -36,7 +36,7 @@ async def generate_course(
         difficulty=payload.difficulty,
         max_chapters=payload.max_chapters,
     )
-    return service.get_course(course.id, current_user.id)
+    return CourseDetail.model_validate(service.get_course(course.id, current_user.id))
 
 
 @router.get("", response_model=list[CourseWithProgress])
@@ -65,7 +65,7 @@ def get_course(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CourseDetail:
-    return CourseService(db).get_course(course_id, current_user.id)
+    return CourseDetail.model_validate(CourseService(db).get_course(course_id, current_user.id))
 
 
 @router.get("/{course_id}/lessons/{lesson_id}", response_model=LessonRead)
@@ -77,7 +77,7 @@ def get_lesson(
 ) -> LessonRead:
     service = CourseService(db)
     service.get_course(course_id, current_user.id)
-    return service.get_lesson(lesson_id, course_id)
+    return LessonRead.model_validate(service.get_lesson(lesson_id, course_id))
 
 
 @router.delete("/{course_id}", response_model=Message)
