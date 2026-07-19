@@ -12,6 +12,11 @@ logger = get_logger(__name__)
 # Message format: list of {"role": "system"|"user"|"assistant", "content": str}
 Messages = list[dict]
 
+NOT_CONFIGURED_MESSAGE = (
+    "AI provider is not configured. Please add GROQ_API_KEY or "
+    "OPENROUTER_API_KEY to your environment variables."
+)
+
 
 class LLMProvider:
     """Thin async wrapper around chat-completion providers.
@@ -62,6 +67,9 @@ class LLMProvider:
         if response_json:
             kwargs["response_format"] = {"type": "json_object"}
 
+        if not self.available:
+            raise ServiceUnavailableError(NOT_CONFIGURED_MESSAGE)
+
         last_error: Exception | None = None
         for client, model, name in self._ordered_clients():
             try:
@@ -74,7 +82,7 @@ class LLMProvider:
                 last_error = exc
                 continue
         raise ServiceUnavailableError(
-            "No LLM provider is available. Configure GROQ_API_KEY or OPENROUTER_API_KEY."
+            "All configured LLM providers failed."
             + (f" Last error: {last_error}" if last_error else "")
         )
 
@@ -88,6 +96,9 @@ class LLMProvider:
         """Yield completion token deltas, trying Groq then OpenRouter."""
         temperature = settings.LLM_TEMPERATURE if temperature is None else temperature
         max_tokens = settings.LLM_MAX_TOKENS if max_tokens is None else max_tokens
+
+        if not self.available:
+            raise ServiceUnavailableError(NOT_CONFIGURED_MESSAGE)
 
         last_error: Exception | None = None
         for client, model, name in self._ordered_clients():
@@ -109,16 +120,17 @@ class LLMProvider:
                 last_error = exc
                 continue
         raise ServiceUnavailableError(
-            "No LLM provider is available for streaming."
+            "All configured LLM providers failed while streaming."
             + (f" Last error: {last_error}" if last_error else "")
         )
 
     def _ordered_clients(self):
+        override = settings.MODEL_NAME or None
         clients = []
         if self._groq is not None:
-            clients.append((self._groq, settings.GROQ_MODEL, "groq"))
+            clients.append((self._groq, override or settings.GROQ_MODEL, "groq"))
         if self._openrouter is not None:
-            clients.append((self._openrouter, settings.OPENROUTER_MODEL, "openrouter"))
+            clients.append((self._openrouter, override or settings.OPENROUTER_MODEL, "openrouter"))
         return clients
 
 

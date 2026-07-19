@@ -114,6 +114,31 @@ Minimum to run: `SECRET_KEY`, `DATABASE_URL`, and one LLM key (`GROQ_API_KEY` or
 
 See [`.env.example`](.env.example) (root/compose), [`backend/.env.example`](backend/.env.example) and [`frontend/.env.example`](frontend/.env.example) for the complete list.
 
+### 🤖 Configuring the AI provider
+
+All AI features (course generation, RAG chatbot, quiz generation, summaries) read their credentials from environment variables — nothing is hardcoded and keys are never logged. Add the following to `backend/.env` (copied from [`backend/.env.example`](backend/.env.example)):
+
+```bash
+# backend/.env
+
+# Set at least one of these. Groq is tried first, OpenRouter is the fallback.
+GROQ_API_KEY=your-groq-key            # https://console.groq.com/keys
+OPENROUTER_API_KEY=your-openrouter-key # https://openrouter.ai/keys
+
+# Optional: override the model used for the active provider.
+# Leave empty to use the per-provider defaults (GROQ_MODEL / OPENROUTER_MODEL).
+MODEL_NAME=llama-3.3-70b-versatile
+```
+
+If you run the stack via docker-compose, the same three variables live in the root [`.env`](.env.example) instead.
+
+Behavior:
+
+- **A valid key is present** → the app automatically uses the configured provider (Groq preferred, OpenRouter fallback). No code changes or restarts of anything but the backend are needed.
+- **No key is configured** → non-AI functionality (auth, uploads, browsing courses, progress, search) works normally, and any AI endpoint returns a clear message:
+
+  > AI provider is not configured. Please add GROQ_API_KEY or OPENROUTER_API_KEY to your environment variables.
+
 ---
 
 ## 📡 API overview

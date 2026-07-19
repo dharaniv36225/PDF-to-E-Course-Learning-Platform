@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.errors import AppError
 from app.core.logging import get_logger
 from app.db.session import get_db
 from app.models.user import User
@@ -73,7 +74,10 @@ async def chat_stream(
             # so surface the failure to the client as an explicit SSE event
             # instead of letting the connection close silently.
             logger.exception("Chat stream failed for session %s: %s", session.id, exc)
-            yield _sse({"type": "error", "message": "Failed to generate a response."})
+            error_message = (
+                exc.message if isinstance(exc, AppError) else "Failed to generate a response."
+            )
+            yield _sse({"type": "error", "message": error_message})
             return
         yield _sse({"type": "done", "message_id": str(message.id)})
 

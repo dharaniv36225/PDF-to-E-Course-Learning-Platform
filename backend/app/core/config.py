@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_MODEL: str = "meta-llama/llama-3.1-70b-instruct"
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    # Optional single override applied to whichever provider is active; when
+    # empty the per-provider defaults (GROQ_MODEL / OPENROUTER_MODEL) are used.
+    MODEL_NAME: str = ""
     LLM_TEMPERATURE: float = 0.2
     LLM_MAX_TOKENS: int = 4096
 
