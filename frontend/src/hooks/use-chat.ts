@@ -78,10 +78,13 @@ export async function streamChat(
           session_id?: string;
           sources?: Source[];
           content?: string;
+          message?: string;
         };
         if (event.type === "session" && event.session_id) callbacks.onSession?.(event.session_id);
         else if (event.type === "sources") callbacks.onSources?.(event.sources ?? []);
         else if (event.type === "token") callbacks.onToken?.(event.content ?? "");
+        else if (event.type === "error")
+          callbacks.onError?.(new Error(event.message ?? "The response was interrupted."));
         else if (event.type === "done") callbacks.onDone?.();
       }
     }

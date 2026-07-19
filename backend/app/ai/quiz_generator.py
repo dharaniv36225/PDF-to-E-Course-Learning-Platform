@@ -41,7 +41,10 @@ async def generate_quiz(
     return _normalize_quiz(data, types)
 
 
-def _normalize_quiz(data: dict[str, Any], types: list[str]) -> dict[str, Any]:
+def _normalize_quiz(data: Any, types: list[str]) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        logger.warning("LLM quiz payload was not a JSON object (got %s); using defaults", type(data).__name__)
+        data = {}
     data.setdefault("title", "Quiz")
     data.setdefault("description", "")
     questions = data.get("questions")
@@ -49,8 +52,11 @@ def _normalize_quiz(data: dict[str, Any], types: list[str]) -> dict[str, Any]:
         questions = []
     normalized: list[dict] = []
     for q in questions:
+        if not isinstance(q, dict):
+            continue
         q_type = q.get("question_type") if q.get("question_type") in VALID_TYPES else types[0]
-        options = q.get("options") if isinstance(q.get("options"), list) else []
+        raw_options = q.get("options") if isinstance(q.get("options"), list) else []
+        options = [str(opt) for opt in raw_options]
         if q_type == "true_false":
             options = ["True", "False"]
         elif q_type == "short_answer":
@@ -58,10 +64,10 @@ def _normalize_quiz(data: dict[str, Any], types: list[str]) -> dict[str, Any]:
         normalized.append(
             {
                 "question_type": q_type,
-                "question": q.get("question", "").strip(),
+                "question": str(q.get("question", "")).strip(),
                 "options": options,
                 "correct_answer": str(q.get("correct_answer", "")).strip(),
-                "explanation": q.get("explanation", "").strip(),
+                "explanation": str(q.get("explanation") or "").strip(),
             }
         )
     data["questions"] = [q for q in normalized if q["question"] and q["correct_answer"]]

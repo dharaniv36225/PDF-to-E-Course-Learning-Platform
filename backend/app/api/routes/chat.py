@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.logging import get_logger
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.chat import (
@@ -21,6 +22,8 @@ from app.schemas.chat import (
 )
 from app.schemas.common import Message
 from app.services.chat_service import ChatService
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -59,12 +62,25 @@ async def chat_stream(
         yield _sse({"type": "session", "session_id": str(session.id)})
         yield _sse({"type": "sources", "sources": sources})
         collected: list[str] = []
-        async for token in iterator:
-            collected.append(token)
-            yield _sse({"type": "token", "content": token})
+        errored = False
+        try:
+            async for token in iterator:
+                collected.append(token)
+                yield _sse({"type": "token", "content": token})
+        except Exception as exc:  # noqa: BLE001 - surface any streaming failure to the client
+            errored = True
+            logger.exception("Chat stream failed for session %s: %s", session.id, exc)
+            yield _sse(
+                {
+                    "type": "error",
+                    "message": "The response was interrupted. Any partial answer has been saved.",
+                }
+            )
+
         full_text = "".join(collected)
-        message = finalize(full_text)
-        yield _sse({"type": "done", "message_id": str(message.id)})
+        # Persist whatever was generated so partial answers survive an interruption.
+        message_id = str(finalize(full_text).id) if full_text else None
+        yield _sse({"type": "done", "message_id": message_id, "error": errored})
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

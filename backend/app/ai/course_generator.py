@@ -41,7 +41,10 @@ async def generate_course_structure(
     return _normalize_course(data, difficulty)
 
 
-def _normalize_course(data: dict[str, Any], difficulty: str) -> dict[str, Any]:
+def _normalize_course(data: Any, difficulty: str) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        logger.warning("LLM course payload was not a JSON object (got %s); using defaults", type(data).__name__)
+        data = {}
     data.setdefault("title", "Untitled Course")
     data.setdefault("description", "")
     data.setdefault("difficulty", difficulty)
@@ -49,16 +52,22 @@ def _normalize_course(data: dict[str, Any], difficulty: str) -> dict[str, Any]:
     for key in ("learning_objectives", "prerequisites", "tags"):
         if not isinstance(data.get(key), list):
             data[key] = []
-    chapters = data.get("chapters")
-    if not isinstance(chapters, list):
-        chapters = []
-    for c_idx, chapter in enumerate(chapters):
+    raw_chapters = data.get("chapters")
+    if not isinstance(raw_chapters, list):
+        raw_chapters = []
+    chapters: list[dict[str, Any]] = []
+    for c_idx, chapter in enumerate(raw_chapters):
+        if not isinstance(chapter, dict):
+            continue
         chapter.setdefault("title", f"Chapter {c_idx + 1}")
         chapter.setdefault("summary", "")
-        lessons = chapter.get("lessons")
-        if not isinstance(lessons, list):
-            lessons = []
-        for l_idx, lesson in enumerate(lessons):
+        raw_lessons = chapter.get("lessons")
+        if not isinstance(raw_lessons, list):
+            raw_lessons = []
+        lessons: list[dict[str, Any]] = []
+        for l_idx, lesson in enumerate(raw_lessons):
+            if not isinstance(lesson, dict):
+                continue
             lesson.setdefault("title", f"Lesson {l_idx + 1}")
             for field in ("explanation", "examples", "important_notes", "summary"):
                 lesson.setdefault(field, "")
@@ -66,6 +75,8 @@ def _normalize_course(data: dict[str, Any], difficulty: str) -> dict[str, Any]:
                 lesson["key_takeaways"] = []
             if not isinstance(lesson.get("estimated_minutes"), int):
                 lesson["estimated_minutes"] = 5
+            lessons.append(lesson)
         chapter["lessons"] = lessons
+        chapters.append(chapter)
     data["chapters"] = chapters
     return data

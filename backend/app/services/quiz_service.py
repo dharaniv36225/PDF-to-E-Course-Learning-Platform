@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from sqlalchemy.orm import Session
 
 from app.ai.quiz_generator import generate_quiz
-from app.core.errors import NotFoundError, ValidationAppError
+from app.core.errors import NotFoundError, PermissionDeniedError, ValidationAppError
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
 from app.repositories.course import CourseRepository, LessonRepository
 from app.repositories.quiz import QuizAttemptRepository, QuizRepository
@@ -90,14 +90,24 @@ class QuizService:
         self._course_or_404(course_id, user_id)
         return self.quizzes.list_for_course(course_id)
 
-    def get_detail(self, quiz_id: uuid.UUID) -> Quiz:
+    def _quiz_for_user(self, quiz_id: uuid.UUID, user_id: uuid.UUID) -> Quiz:
+        """Load a quiz, enforcing that it belongs to a course owned by ``user_id``.
+
+        Raises ``NotFoundError`` (404) if the quiz does not exist and
+        ``PermissionDeniedError`` (403) if it exists but is owned by someone else.
+        """
         quiz = self.quizzes.get_detail(quiz_id)
         if not quiz:
             raise NotFoundError("Quiz not found")
+        if not self.courses.get_for_user(quiz.course_id, user_id):
+            raise PermissionDeniedError("You do not have access to this quiz")
         return quiz
 
+    def get_detail(self, quiz_id: uuid.UUID, user_id: uuid.UUID) -> Quiz:
+        return self._quiz_for_user(quiz_id, user_id)
+
     def grade(self, quiz_id: uuid.UUID, user_id: uuid.UUID, submitted: list[dict]) -> dict:
-        quiz = self.get_detail(quiz_id)
+        quiz = self._quiz_for_user(quiz_id, user_id)
         answers_by_qid = {str(a["question_id"]): a["answer"] for a in submitted}
         graded: list[dict] = []
         correct_count = 0
