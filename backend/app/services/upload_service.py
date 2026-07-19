@@ -9,12 +9,12 @@ from sqlalchemy.orm import Session
 from app.ai.text_splitter import split_pages
 from app.ai.vector_store import get_vector_store
 from app.core.config import settings
-from app.core.errors import NotFoundError, ValidationAppError
+from app.core.errors import NotFoundError
 from app.core.logging import get_logger
 from app.models.embedding import Embedding
 from app.models.upload import Upload
 from app.repositories.upload import UploadRepository
-from app.utils.pdf import extract_pages, pages_to_text
+from app.utils.pdf import extract_pages, pages_to_text, validate_pdf
 from app.utils.storage import get_storage
 
 logger = get_logger(__name__)
@@ -30,11 +30,12 @@ class UploadService:
     def create_upload(
         self, user_id: uuid.UUID, data: bytes, original_filename: str, content_type: str
     ) -> Upload:
-        if not original_filename.lower().endswith(".pdf"):
-            raise ValidationAppError("Only PDF files are supported")
-        max_bytes = settings.MAX_UPLOAD_MB * 1024 * 1024
-        if len(data) > max_bytes:
-            raise ValidationAppError(f"File exceeds the {settings.MAX_UPLOAD_MB}MB limit")
+        validate_pdf(
+            data,
+            content_type=content_type,
+            filename=original_filename,
+            max_bytes=settings.MAX_UPLOAD_MB * 1024 * 1024,
+        )
 
         storage_path, provider = self.storage.save(data, original_filename, str(user_id))
         upload = Upload(

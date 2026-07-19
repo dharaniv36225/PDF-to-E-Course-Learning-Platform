@@ -32,16 +32,19 @@ def create_app() -> FastAPI:
             "Convert PDFs into structured AI-powered learning courses with an "
             "RAG chatbot, quizzes and progress tracking."
         ),
-        openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
-        docs_url="/docs",
-        redoc_url="/redoc",
+        openapi_url=None if settings.is_production else f"{settings.API_V1_PREFIX}/openapi.json",
+        docs_url=None if settings.is_production else "/docs",
+        redoc_url=None if settings.is_production else "/redoc",
         lifespan=lifespan,
     )
 
+    # Never combine a wildcard origin with credentialed requests: that would let
+    # any site read authenticated responses. Disable credentials if "*" is set.
+    allow_wildcard = "*" in settings.BACKEND_CORS_ORIGINS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.BACKEND_CORS_ORIGINS,
-        allow_credentials=True,
+        allow_credentials=not allow_wildcard,
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=["X-Process-Time"],
