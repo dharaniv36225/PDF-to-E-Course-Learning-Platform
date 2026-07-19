@@ -35,7 +35,7 @@ async def generate_quiz(
         num_questions=payload.num_questions,
         question_types=payload.question_types,
     )
-    return service.get_detail(quiz.id, current_user.id)
+    return QuizDetail.model_validate(service.get_detail(quiz.id, current_user.id))
 
 
 @router.get("/course/{course_id}", response_model=list[QuizRead])
@@ -44,7 +44,10 @@ def list_course_quizzes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[QuizRead]:
-    return list(QuizService(db).list_for_course(course_id, current_user.id))
+    return [
+        QuizRead.model_validate(quiz)
+        for quiz in QuizService(db).list_for_course(course_id, current_user.id)
+    ]
 
 
 @router.get("/{quiz_id}", response_model=QuizDetail)
@@ -53,7 +56,7 @@ def get_quiz(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> QuizDetail:
-    return QuizService(db).get_detail(quiz_id, current_user.id)
+    return QuizDetail.model_validate(QuizService(db).get_detail(quiz_id, current_user.id))
 
 
 @router.post("/{quiz_id}/submit", response_model=QuizAttemptResult)

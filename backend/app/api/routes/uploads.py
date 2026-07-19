@@ -24,13 +24,13 @@ async def upload_pdfs(
 ) -> list[UploadRead]:
     """Upload one or more PDFs. Each is stored, text-extracted, chunked and embedded."""
     service = UploadService(db)
-    created = []
+    created: list[UploadRead] = []
     for file in files:
         data = await file.read()
         upload = service.create_upload(
             current_user.id, data, file.filename or "document.pdf", file.content_type or "application/pdf"
         )
-        created.append(upload)
+        created.append(UploadRead.model_validate(upload))
     return created
 
 
@@ -38,7 +38,7 @@ async def upload_pdfs(
 def list_uploads(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> list[UploadRead]:
-    return list(UploadService(db).list_uploads(current_user.id))
+    return [UploadRead.model_validate(u) for u in UploadService(db).list_uploads(current_user.id)]
 
 
 @router.get("/{upload_id}", response_model=UploadDetail)
@@ -47,7 +47,7 @@ def get_upload(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UploadDetail:
-    return UploadService(db).get_upload(upload_id, current_user.id)
+    return UploadDetail.model_validate(UploadService(db).get_upload(upload_id, current_user.id))
 
 
 @router.delete("/{upload_id}", response_model=Message)
