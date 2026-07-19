@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.ai.text_splitter import split_pages
 from app.ai.vector_store import get_vector_store
 from app.core.config import settings
-from app.core.errors import NotFoundError, ValidationAppError
+from app.core.errors import ValidationAppError, get_or_404
 from app.core.logging import get_logger
 from app.models.embedding import Embedding
 from app.models.upload import Upload
@@ -88,10 +88,7 @@ class UploadService:
         return self.uploads.list_for_user(user_id)
 
     def get_upload(self, upload_id: uuid.UUID, user_id: uuid.UUID) -> Upload:
-        upload = self.uploads.get_for_user(upload_id, user_id)
-        if not upload:
-            raise NotFoundError("Upload not found")
-        return upload
+        return get_or_404(self.uploads.get_for_user(upload_id, user_id), "Upload not found")
 
     def delete_upload(self, upload_id: uuid.UUID, user_id: uuid.UUID) -> None:
         upload = self.get_upload(upload_id, user_id)

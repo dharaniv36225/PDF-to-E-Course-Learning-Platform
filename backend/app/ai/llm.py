@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from typing import Any
 
 from app.core.config import settings
 from app.core.errors import ServiceUnavailableError
 from app.core.logging import get_logger
+from app.utils.json_parsing import extract_json
 
 logger = get_logger(__name__)
 
@@ -77,6 +79,26 @@ class LLMProvider:
             "No LLM provider is available. Configure GROQ_API_KEY or OPENROUTER_API_KEY."
             + (f" Last error: {last_error}" if last_error else "")
         )
+
+    async def complete_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        *,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> Any:
+        """Run a system+user completion in JSON mode and parse the result."""
+        raw = await self.complete(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=temperature,
+            max_tokens=max_tokens,
+            response_json=True,
+        )
+        return extract_json(raw)
 
     async def stream(
         self,

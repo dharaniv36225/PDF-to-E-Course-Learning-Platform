@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from sqlalchemy.orm import Session
 
 from app.ai.quiz_generator import generate_quiz
-from app.core.errors import NotFoundError, ValidationAppError
+from app.core.errors import ValidationAppError, get_or_404
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
 from app.repositories.course import CourseRepository, LessonRepository
 from app.repositories.quiz import QuizAttemptRepository, QuizRepository
@@ -24,10 +24,7 @@ class QuizService:
         self.uploads = UploadRepository(db)
 
     def _course_or_404(self, course_id: uuid.UUID, user_id: uuid.UUID):
-        course = self.courses.get_for_user(course_id, user_id)
-        if not course:
-            raise NotFoundError("Course not found")
-        return course
+        return get_or_404(self.courses.get_for_user(course_id, user_id), "Course not found")
 
     def _source_material(self, course, chapter_id: uuid.UUID | None) -> str:
         if chapter_id is not None:
@@ -91,10 +88,7 @@ class QuizService:
         return self.quizzes.list_for_course(course_id)
 
     def get_detail(self, quiz_id: uuid.UUID) -> Quiz:
-        quiz = self.quizzes.get_detail(quiz_id)
-        if not quiz:
-            raise NotFoundError("Quiz not found")
-        return quiz
+        return get_or_404(self.quizzes.get_detail(quiz_id), "Quiz not found")
 
     def grade(self, quiz_id: uuid.UUID, user_id: uuid.UUID, submitted: list[dict]) -> dict:
         quiz = self.get_detail(quiz_id)

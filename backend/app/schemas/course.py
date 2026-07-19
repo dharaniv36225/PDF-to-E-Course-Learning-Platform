@@ -56,6 +56,16 @@ class CourseWithProgress(CourseRead):
     total_lessons: int = 0
     completed_lessons: int = 0
 
+    @classmethod
+    def from_course(cls, course: object, stats: dict) -> CourseWithProgress:
+        """Build a progress-annotated course from an ORM course and a stats dict."""
+        return cls(
+            **CourseRead.model_validate(course).model_dump(),
+            completion_percent=stats["completion_percent"],
+            total_lessons=stats["total_lessons"],
+            completed_lessons=stats["completed_lessons"],
+        )
+
 
 class GenerateCourseRequest(BaseModel):
     upload_id: uuid.UUID

@@ -7,7 +7,7 @@ from collections.abc import AsyncIterator
 from sqlalchemy.orm import Session
 
 from app.ai import rag
-from app.core.errors import NotFoundError
+from app.core.errors import get_or_404
 from app.core.logging import get_logger
 from app.models.chat import ChatMessage, ChatSession
 from app.repositories.chat import ChatMessageRepository, ChatSessionRepository
@@ -24,19 +24,16 @@ class ChatService:
         self.courses = CourseRepository(db)
 
     def _get_course_upload(self, course_id: uuid.UUID, user_id: uuid.UUID) -> uuid.UUID:
-        course = self.courses.get_for_user(course_id, user_id)
-        if not course:
-            raise NotFoundError("Course not found")
+        course = get_or_404(self.courses.get_for_user(course_id, user_id), "Course not found")
         return course.upload_id
 
     def get_or_create_session(
         self, user_id: uuid.UUID, course_id: uuid.UUID, session_id: uuid.UUID | None, title: str
     ) -> ChatSession:
         if session_id:
-            session = self.sessions.get_for_user(session_id, user_id)
-            if not session:
-                raise NotFoundError("Chat session not found")
-            return session
+            return get_or_404(
+                self.sessions.get_for_user(session_id, user_id), "Chat session not found"
+            )
         session = ChatSession(user_id=user_id, course_id=course_id, title=title[:120] or "New conversation")
         self.sessions.add(session)
         self.sessions.commit()
@@ -95,14 +92,11 @@ class ChatService:
         return self.sessions.list_for_user(user_id, course_id=course_id)
 
     def get_session_detail(self, session_id: uuid.UUID, user_id: uuid.UUID) -> ChatSession:
-        session = self.sessions.get_detail(session_id, user_id)
-        if not session:
-            raise NotFoundError("Chat session not found")
-        return session
+        return get_or_404(self.sessions.get_detail(session_id, user_id), "Chat session not found")
 
     def delete_session(self, session_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        session = self.sessions.get_for_user(session_id, user_id)
-        if not session:
-            raise NotFoundError("Chat session not found")
+        session = get_or_404(
+            self.sessions.get_for_user(session_id, user_id), "Chat session not found"
+        )
         self.sessions.delete(session)
         self.sessions.commit()

@@ -1,6 +1,8 @@
 """Application-wide exception types and FastAPI exception handlers."""
 from __future__ import annotations
 
+from typing import TypeVar
+
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -10,6 +12,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+T = TypeVar("T")
 
 
 class AppError(Exception):
@@ -55,6 +59,13 @@ class ValidationAppError(AppError):
 class ServiceUnavailableError(AppError):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     error_code = "service_unavailable"
+
+
+def get_or_404(entity: T | None, message: str) -> T:
+    """Return ``entity`` if present, otherwise raise a ``NotFoundError``."""
+    if entity is None:
+        raise NotFoundError(message)
+    return entity
 
 
 def _error_body(error_code: str, message: str, details: object | None = None) -> dict:

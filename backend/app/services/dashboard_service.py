@@ -11,7 +11,7 @@ from app.repositories.course import CourseRepository
 from app.repositories.progress import ProgressRepository
 from app.repositories.quiz import QuizAttemptRepository, QuizRepository
 from app.repositories.upload import UploadRepository
-from app.schemas.course import CourseRead, CourseWithProgress
+from app.schemas.course import CourseWithProgress
 from app.services.course_service import CourseService
 
 
@@ -35,18 +35,10 @@ class DashboardService:
         progress_rows = list(self.progress.list_for_user(user_id))
         total_time_minutes = round(sum(r.time_spent_seconds for r in progress_rows) / 60, 2)
 
-        recent_courses = []
-        for item in self.course_service.list_courses_with_progress(user_id)[:6]:
-            course = item["course"]
-            stats = item["stats"]
-            recent_courses.append(
-                CourseWithProgress(
-                    **CourseRead.model_validate(course).model_dump(),
-                    completion_percent=stats["completion_percent"],
-                    total_lessons=stats["total_lessons"],
-                    completed_lessons=stats["completed_lessons"],
-                )
-            )
+        recent_courses = [
+            CourseWithProgress.from_course(item["course"], item["stats"])
+            for item in self.course_service.list_courses_with_progress(user_id)[:6]
+        ]
 
         quiz_scores = []
         for attempt in attempts[:20]:
