@@ -84,20 +84,22 @@ class QuizService:
             )
         self.quizzes.commit()
         self.db.refresh(quiz)
-        return quiz
+        return self.get_detail(quiz.id, user_id)
 
     def list_for_course(self, course_id: uuid.UUID, user_id: uuid.UUID) -> Sequence[Quiz]:
         self._course_or_404(course_id, user_id)
         return self.quizzes.list_for_course(course_id)
 
-    def get_detail(self, quiz_id: uuid.UUID) -> Quiz:
+    def get_detail(self, quiz_id: uuid.UUID, user_id: uuid.UUID) -> Quiz:
         quiz = self.quizzes.get_detail(quiz_id)
         if not quiz:
             raise NotFoundError("Quiz not found")
+        # Enforce ownership: the quiz's course must belong to the requesting user.
+        self._course_or_404(quiz.course_id, user_id)
         return quiz
 
     def grade(self, quiz_id: uuid.UUID, user_id: uuid.UUID, submitted: list[dict]) -> dict:
-        quiz = self.get_detail(quiz_id)
+        quiz = self.get_detail(quiz_id, user_id)
         answers_by_qid = {str(a["question_id"]): a["answer"] for a in submitted}
         graded: list[dict] = []
         correct_count = 0
