@@ -27,3 +27,26 @@ def test_normalize_quiz_drops_incomplete():
     raw = {"questions": [{"question_type": "mcq", "question": "", "correct_answer": ""}]}
     result = _normalize_quiz(raw, ["mcq"])
     assert result["questions"] == []
+
+
+def test_normalize_quiz_handles_non_dict_payload():
+    """A malformed LLM response (list/None/str) must not raise."""
+    for bad in ([1, 2, 3], None, "not json", 42):
+        result = _normalize_quiz(bad, ["mcq"])
+        assert result["title"] == "Quiz"
+        assert result["questions"] == []
+
+
+def test_normalize_quiz_skips_non_dict_and_nonstring_fields():
+    raw = {
+        "questions": [
+            "totally not a question object",
+            {"question_type": "mcq", "question": 123, "options": [1, 2], "correct_answer": 4},
+        ]
+    }
+    result = _normalize_quiz(raw, ["mcq"])
+    assert len(result["questions"]) == 1
+    q = result["questions"][0]
+    assert q["question"] == "123"
+    assert q["options"] == ["1", "2"]
+    assert q["correct_answer"] == "4"
